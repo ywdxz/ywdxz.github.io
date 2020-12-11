@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on My personal blog</title>
+    <link>http://ywdxz.github.io/posts/</link>
+    <description>Recent content in Posts on My personal blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Copyright notice</copyright>
+    <lastBuildDate>Fri, 11 Dec 2020 14:40:49 +0800</lastBuildDate><atom:link href="http://ywdxz.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>关于math.NaN() 问题记录</title>
+      <link>http://ywdxz.github.io/posts/2020-12-11-3/</link>
+      <pubDate>Fri, 11 Dec 2020 14:40:49 +0800</pubDate>
+      
+      <guid>http://ywdxz.github.io/posts/2020-12-11-3/</guid>
+      <description>问题 看 map 源码看到一个测试case,为什么 k == k
+func testMapNan(t *testing.T, m map[float64]int) { if len(m) != 3 { t.Error(&amp;#34;length wrong&amp;#34;) } s := 0 for k, v := range m { if k == k { // why ?</description>
+    </item>
+    
+    <item>
+      <title>环境变量整理</title>
+      <link>http://ywdxz.github.io/posts/2020-12-11-1/</link>
+      <pubDate>Fri, 11 Dec 2020 11:38:25 +0800</pubDate>
+      
+      <guid>http://ywdxz.github.io/posts/2020-12-11-1/</guid>
+      <description>经常会用到需要手工设置linux环境变量的情况，每次都是google一下，这边把结果整理一下作为知识储备。
+临时设置  直接执行 export GOBACTRACE=crash： 仅对当前shell生效 env GOBACTRACE=crash set GOBACTRACE=crash  set、env、export
+ set：显示/设置 shell变量，包括私有变量和用户变量 env：显示/设置 用户变量 export：显示/设置 当前导出成用户变量的shell变量  linux变量分为shell变量和用户变量，export是一个命令，可以将shell变量导出成用户变量。这些变量都可以通过unset来清除掉。</description>
+    </item>
+    
+    <item>
+      <title>浮点数整理</title>
+      <link>http://ywdxz.github.io/posts/2020-12-11-2/</link>
+      <pubDate>Mon, 30 Nov 2020 23:18:10 +0800</pubDate>
+      
+      <guid>http://ywdxz.github.io/posts/2020-12-11-2/</guid>
+      <description>浮点数整理 标准 根据国际标准IEEE 754，任意一个二进制浮点数可以表示成下面科学计数的形式：
+value = (-1)^sign * fraction * 2^exponent 内存布局 ----------------------- | sign|exponent|fraction| ----------------------- sign 符号位，1 byte.（ 0 表示正数，1 表示负数）</description>
+    </item>
+    
+  </channel>
+</rss>

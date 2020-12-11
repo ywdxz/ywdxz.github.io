@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Tags on Hugo 主题 MemE</title>
-    <link>https://ywdxz.github.io/tags/</link>
-    <description>Recent content in Tags on Hugo 主题 MemE</description>
+    <title>Tags on My personal blog</title>
+    <link>http://ywdxz.github.io/tags/</link>
+    <description>Recent content in Tags on My personal blog</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>zh-CN</language>
-    <managingEditor>ywdxz0115@gmail.com (ywdxz)</managingEditor>
-    <webMaster>ywdxz0115@gmail.com (ywdxz)</webMaster>
-    <copyright>[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)</copyright>
-    
-	<atom:link href="https://ywdxz.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
-    
-    
+    <language>en-us</language>
+    <copyright>© Copyright notice</copyright><atom:link href="http://ywdxz.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
   </channel>
 </rss>
