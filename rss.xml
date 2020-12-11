@@ -7,83 +7,26 @@
 
 <rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
     <channel>
-        <title>Hugo 主题 MemE</title>
-        <link>https://ywdxz.github.io/</link>
+        <title>ywdxz</title>
+        <link>http://ywdxz.github.io/</link>
         <description>MemE 是一个强大且可高度定制的 GoHugo 博客主题，专为个人博客设计。</description>
-        <generator>Hugo 0.69.2 https://gohugo.io/</generator>
+        <generator>Hugo 0.79.0 https://gohugo.io/</generator>
         
             <language>zh-CN</language>
         
         
-            <managingEditor>ywdxz0115@gmail.com (ywdxz)</managingEditor>
+            <managingEditor>ywdxz0115@gmail.com (xz)</managingEditor>
         
         
-            <webMaster>ywdxz0115@gmail.com (ywdxz)</webMaster>
+            <webMaster>ywdxz0115@gmail.com (xz)</webMaster>
         
         
             <copyright>[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)</copyright>
         
-        <lastBuildDate>Mon, 27 Jul 2020 16:09:21 -0400</lastBuildDate>
+        <lastBuildDate>Fri, 11 Dec 2020 12:03:40 &#43;0800</lastBuildDate>
         
-            <atom:link rel="self" type="application/rss&#43;xml" href="https://ywdxz.github.io/rss.xml" />
+            <atom:link rel="self" type="application/rss&#43;xml" href="http://ywdxz.github.io/rss.xml" />
         
-        
-            <item>
-                <title>2</title>
-                <link>https://ywdxz.github.io/posts/2/</link>
-                <guid isPermaLink="true">https://ywdxz.github.io/posts/2/</guid>
-                <pubDate>Mon, 27 Jul 2020 15:45:13 -0400</pubDate>
-                
-                    <author>ywdxz0115@gmail.com (ywdxz)</author>
-                
-                <copyright>[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)</copyright>
-                
-                    <description>&lt;p&gt;22222yexxxxx&lt;/p&gt;
-</description>
-                
-                
-                
-                
-                
-                    
-                        
-                    
-                        
-                    
-                
-            </item>
-        
-            <item>
-                <title>Hello World</title>
-                <link>https://ywdxz.github.io/posts/hello-world/</link>
-                <guid isPermaLink="true">https://ywdxz.github.io/posts/hello-world/</guid>
-                <pubDate>Mon, 27 Jul 2020 13:43:32 -0400</pubDate>
-                
-                    <author>ywdxz0115@gmail.com (ywdxz)</author>
-                
-                <copyright>[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)</copyright>
-                
-                    <description>&lt;h3 id=&#34;hello-world&#34;&gt;Hello World&lt;/h3&gt;
-&lt;ol&gt;
-&lt;li&gt;aaa&lt;/li&gt;
-&lt;li&gt;bbb&lt;/li&gt;
-&lt;li&gt;ccc&lt;/li&gt;
-&lt;li&gt;xxx&lt;/li&gt;
-&lt;li&gt;zzz&lt;/li&gt;
-&lt;/ol&gt;
-</description>
-                
-                
-                
-                
-                
-                    
-                        
-                    
-                        
-                    
-                
-            </item>
         
     </channel>
 </rss>
