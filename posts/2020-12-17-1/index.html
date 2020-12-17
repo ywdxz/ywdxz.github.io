@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>redis 源码 内部数据结构 - My personal blog</title><link rel="icon" type="image/png" href=icons/myicon.png /><meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta property="og:title" content="redis 源码 内部数据结构" />
+<meta property="og:description" content="redis - 动态字符串 sdshdr 数据结构 struct sdshdr { // buf 已占用长度  int len; // buf 剩余可用长度  int free; // 实际保存字符串数据的地方  // 利用c99(C99 specification 6." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://ywdxz.github.io/posts/2020-12-17-1/" />
+<meta property="article:published_time" content="2020-12-17T14:10:03+08:00" />
+<meta property="article:modified_time" content="2020-12-17T14:10:03+08:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="redis 源码 内部数据结构"/>
+<meta name="twitter:description" content="redis - 动态字符串 sdshdr 数据结构 struct sdshdr { // buf 已占用长度  int len; // buf 剩余可用长度  int free; // 实际保存字符串数据的地方  // 利用c99(C99 specification 6."/>
+<link href="https://fonts.googleapis.com/css?family=Ubuntu:300,400,300italic,400italic|Raleway:200,300" rel="stylesheet">
+
+	<link rel="stylesheet" type="text/css" media="screen" href="http://ywdxz.github.iocss/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="http://ywdxz.github.iocss/main.css" />
+	<link rel="stylesheet" type="text/css" href="http://ywdxz.github.iocss/custom.css" />
+	<link rel="stylesheet" type="text/css" href="http://ywdxz.github.iocss/dark.css"  />
+	<link rel="stylesheet" type="text/css" href="http://ywdxz.github.iocss/custom-dark.css"  />
+
+	<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+	<script src="http://ywdxz.github.iojs/main.js"></script>
+	<script src="http://ywdxz.github.iojs/abc.js"></script>
+	<script src="http://ywdxz.github.iojs/xyz.js"></script>
+	<script src="https://code.jquery.com/jquery-3.4.1.js"></script>
+</head>
+
+<body>
+	<div class="container wrapper post">
+		<div class="header">
+	<base href="http://ywdxz.github.io">
+	<h1 class="site-title"><a href="http://ywdxz.github.io">My personal blog</a></h1>
+	<div class="site-description"><h2>Clean and minimal personal <a href="https://github.com/vividvilla/ezhil">blog theme for Hugo</a></h2><nav class="nav social">
+			<ul class="flat"><a href="https://github.com/vividvilla/ezhil" title="Github"><i data-feather="github"></i></a><a href="https://twitter.com/gohugoio" title="Twitter"><i data-feather="twitter"></i></a></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+			<li>
+				<a href="/">Home</a>
+			</li>
+			
+			<li>
+				<a href="/posts">All posts</a>
+			</li>
+			
+			<li>
+				<a href="/about">About</a>
+			</li>
+			
+			<li>
+				<a href="/tags">Tags</a>
+			</li>
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post-header">
+			<h1 class="title">redis 源码 内部数据结构</h1>
+			<div class="meta">Posted at &mdash; Dec 17, 2020</div>
+		</div>
+
+		<div class="markdown">
+			<h2 id="redis---动态字符串">redis - 动态字符串</h2>
+<h3 id="sdshdr-数据结构">sdshdr 数据结构</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#719e07">struct</span> sdshdr {
+
+    <span style="color:#586e75">// buf 已占用长度
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">int</span> len;
+
+    <span style="color:#586e75">// buf 剩余可用长度
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">int</span> free;
+
+    <span style="color:#586e75">// 实际保存字符串数据的地方
+</span><span style="color:#586e75"></span>    <span style="color:#586e75">// 利用c99(C99 specification 6.7.2.1.16)中引入的 flexible array member,通过buf来引用sdshdr后面的地址，
+</span><span style="color:#586e75"></span>    <span style="color:#586e75">// 详情google &#34;flexible array member&#34;
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">char</span> buf[];
+};
+</code></pre></div><h3 id="buf-进行扩展策略">buf 进行扩展策略</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c">sds <span style="color:#268bd2">sdsMakeRoomFor</span>(
+    sds s,
+    size_t addlen   <span style="color:#586e75">// 需要增加的空间长度
+</span><span style="color:#586e75"></span>) 
+{
+    <span style="color:#719e07">struct</span> sdshdr <span style="color:#719e07">*</span>sh, <span style="color:#719e07">*</span>newsh;
+    size_t free <span style="color:#719e07">=</span> sdsavail(s);
+    size_t len, newlen;
+
+    <span style="color:#586e75">// 剩余空间可以满足需求，无须扩展
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">if</span> (free <span style="color:#719e07">&gt;=</span> addlen) <span style="color:#719e07">return</span> s;
+
+    sh <span style="color:#719e07">=</span> (<span style="color:#dc322f">void</span><span style="color:#719e07">*</span>) (s<span style="color:#719e07">-</span>(<span style="color:#719e07">sizeof</span>(<span style="color:#719e07">struct</span> sdshdr)));
+
+    <span style="color:#586e75">// 目前 buf 长度
+</span><span style="color:#586e75"></span>    len <span style="color:#719e07">=</span> sdslen(s);
+    <span style="color:#586e75">// 新 buf 长度
+</span><span style="color:#586e75"></span>    newlen <span style="color:#719e07">=</span> (len<span style="color:#719e07">+</span>addlen);
+    <span style="color:#586e75">// 如果新 buf 长度小于 SDS_MAX_PREALLOC 长度
+</span><span style="color:#586e75"></span>    <span style="color:#586e75">// 那么将 buf 的长度设为新 buf 长度的两倍
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">if</span> (newlen <span style="color:#719e07">&lt;</span> SDS_MAX_PREALLOC)
+        newlen <span style="color:#719e07">*=</span> <span style="color:#2aa198">2</span>;
+    <span style="color:#719e07">else</span>
+        newlen <span style="color:#719e07">+=</span> SDS_MAX_PREALLOC;
+
+    <span style="color:#586e75">// 扩展长度
+</span><span style="color:#586e75"></span>    newsh <span style="color:#719e07">=</span> zrealloc(sh, <span style="color:#719e07">sizeof</span>(<span style="color:#719e07">struct</span> sdshdr)<span style="color:#719e07">+</span>newlen<span style="color:#719e07">+</span><span style="color:#2aa198">1</span>);
+
+    <span style="color:#719e07">if</span> (newsh <span style="color:#719e07">==</span> <span style="color:#b58900">NULL</span>) <span style="color:#719e07">return</span> <span style="color:#b58900">NULL</span>;
+
+    newsh<span style="color:#719e07">-&gt;</span>free <span style="color:#719e07">=</span> newlen <span style="color:#719e07">-</span> len;
+
+    <span style="color:#719e07">return</span> newsh<span style="color:#719e07">-&gt;</span>buf;
+}
+</code></pre></div><hr>
+<h2 id="redis---双端列表">redis - 双端列表</h2>
+<p><em>Node：Redis 列表使用两种数据结构作为底层实现：</em></p>
+<ol>
+<li>双端队列</li>
+<li>压缩队列</li>
+</ol>
+<h3 id="双端链表的实现">双端链表的实现</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 链表节点
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> listNode {
+
+    <span style="color:#586e75">// 前驱节点
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">struct</span> listNode <span style="color:#719e07">*</span>prev;
+
+    <span style="color:#586e75">// 后继节点
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">struct</span> listNode <span style="color:#719e07">*</span>next;
+
+    <span style="color:#586e75">// 值
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>value;
+
+} listNode;
+
+<span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 链表迭代器
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> listIter {
+
+    <span style="color:#586e75">// 下一节点
+</span><span style="color:#586e75"></span>    listNode <span style="color:#719e07">*</span>next;
+
+    <span style="color:#586e75">// 迭代方向
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">int</span> direction;
+
+} listIter;
+
+<span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 链表
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> list {
+
+    <span style="color:#586e75">// 表头指针
+</span><span style="color:#586e75"></span>    listNode <span style="color:#719e07">*</span>head;
+
+    <span style="color:#586e75">// 表尾指针
+</span><span style="color:#586e75"></span>    listNode <span style="color:#719e07">*</span>tail;
+
+    <span style="color:#586e75">// 节点数量
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">unsigned</span> <span style="color:#dc322f">long</span> len;
+
+    <span style="color:#586e75">// 复制函数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>(<span style="color:#719e07">*</span>dup)(<span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>ptr);
+    <span style="color:#586e75">// 释放函数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> (<span style="color:#719e07">*</span>free)(<span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>ptr);
+    <span style="color:#586e75">// 比对函数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">int</span> (<span style="color:#719e07">*</span>match)(<span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>ptr, <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>key);
+} list;
+</code></pre></div><hr>
+<h2 id="redis---字典">redis - 字典</h2>
+<p>Redis 的 Hash 类型键使用以下两种数据结构作为底层实现:</p>
+<ol>
+<li>字典</li>
+<li>压缩列表</li>
+</ol>
+<h3 id="字典">字典</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 字典
+</span><span style="color:#586e75"> *
+</span><span style="color:#586e75"> * 每个字典使用两个哈希表，用于实现渐进式 rehash
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> dict {
+
+    <span style="color:#586e75">// 特定于类型的处理函数
+</span><span style="color:#586e75"></span>    dictType <span style="color:#719e07">*</span>type;
+
+    <span style="color:#586e75">// 类型处理函数的私有数据
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>privdata;
+
+    <span style="color:#586e75">// 哈希表（2个）
+</span><span style="color:#586e75"></span>    dictht ht[<span style="color:#2aa198">2</span>];       
+
+    <span style="color:#586e75">// 记录 rehash 进度的标志，值为-1 表示 rehash 未进行
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">int</span> rehashidx;
+
+    <span style="color:#586e75">// 当前正在运作的安全迭代器数量
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">int</span> iterators;      
+
+} dict;
+</code></pre></div><h3 id="处理函数">处理函数</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 特定于类型的一簇处理函数
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> dictType {
+    <span style="color:#586e75">// 计算键的哈希值函数, 计算key在hash table中的存储位置，不同的dict可以有不同的hash function.
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">unsigned</span> <span style="color:#dc322f">int</span> (<span style="color:#719e07">*</span>hashFunction)(<span style="color:#719e07">const</span> <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>key);
+    <span style="color:#586e75">// 复制键的函数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>(<span style="color:#719e07">*</span>keyDup)(<span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>privdata, <span style="color:#719e07">const</span> <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>key);
+    <span style="color:#586e75">// 复制值的函数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>(<span style="color:#719e07">*</span>valDup)(<span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>privdata, <span style="color:#719e07">const</span> <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>obj);
+    <span style="color:#586e75">// 对比两个键的函数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">int</span> (<span style="color:#719e07">*</span>keyCompare)(<span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>privdata, <span style="color:#719e07">const</span> <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>key1, <span style="color:#719e07">const</span> <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>key2);
+    <span style="color:#586e75">// 键的释构函数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> (<span style="color:#719e07">*</span>keyDestructor)(<span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>privdata, <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>key);
+    <span style="color:#586e75">// 值的释构函数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> (<span style="color:#719e07">*</span>valDestructor)(<span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>privdata, <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>obj);
+} dictType
+</code></pre></div><h3 id="哈希表">哈希表</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 哈希表
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> dictht {
+
+    <span style="color:#586e75">// 哈希表节点指针数组（俗称桶，bucket）
+</span><span style="color:#586e75"></span>    dictEntry <span style="color:#719e07">**</span>table;      
+
+    <span style="color:#586e75">// 指针数组的大小
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">unsigned</span> <span style="color:#dc322f">long</span> size;     
+
+    <span style="color:#586e75">// 指针数组的长度掩码，用于计算索引值
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">unsigned</span> <span style="color:#dc322f">long</span> sizemask; 
+
+    <span style="color:#586e75">// 哈希表现有的节点数量
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">unsigned</span> <span style="color:#dc322f">long</span> used;     
+
+} dictht;
+</code></pre></div><h3 id="哈希表节点">哈希表节点</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 哈希表节点
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> dictEntry {
+    <span style="color:#586e75">// 键
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>key;
+
+    <span style="color:#586e75">// 值
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">union</span> {
+        <span style="color:#dc322f">void</span> <span style="color:#719e07">*</span>val;
+        uint64_t u64;
+        int64_t s64;
+    } v;
+
+    <span style="color:#586e75">// 链往后继节点
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">struct</span> dictEntry <span style="color:#719e07">*</span>next; 
+
+} dictEntry;
+</code></pre></div><h3 id="迭代器">迭代器</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 字典迭代器
+</span><span style="color:#586e75"> *
+</span><span style="color:#586e75"> * 如果 safe 属性的值为 1 ，那么表示这个迭代器是一个安全迭代器。
+</span><span style="color:#586e75"> * 当安全迭代器正在迭代一个字典时，该字典仍然可以调用 dictAdd 、 dictFind 和其他函数。
+</span><span style="color:#586e75"> *
+</span><span style="color:#586e75"> * 如果 safe 属性的值为 0 ，那么表示这不是一个安全迭代器。
+</span><span style="color:#586e75"> * 如果正在运作的迭代器是不安全迭代器，那么它只可以对字典调用 dictNext 函数。
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> dictIterator {
+
+    <span style="color:#586e75">// 正在迭代的字典
+</span><span style="color:#586e75"></span>    dict <span style="color:#719e07">*</span>d;                
+
+    <span style="color:#dc322f">int</span> table,              <span style="color:#586e75">// 正在迭代的哈希表的号码（0 或者 1）
+</span><span style="color:#586e75"></span>        index,              <span style="color:#586e75">// 正在迭代的哈希表数组的索引
+</span><span style="color:#586e75"></span>        safe;               <span style="color:#586e75">// 是否安全？
+</span><span style="color:#586e75"></span>
+    dictEntry <span style="color:#719e07">*</span>entry,       <span style="color:#586e75">// 当前哈希节点
+</span><span style="color:#586e75"></span>              <span style="color:#719e07">*</span>nextEntry;   <span style="color:#586e75">// 当前哈希节点的后继节点
+</span><span style="color:#586e75"></span>} dictIterator;
+</code></pre></div><h3 id="哈希算法">哈希算法</h3>
+<ol>
+<li>MurmurHash2 32 bit 算法</li>
+<li>djb 算 法</li>
+</ol>
+<h3 id="rehash">ReHash</h3>
+<p>执行过程</p>
+<ol>
+<li>创建一个比 ht[0]-&gt;table <strong>更大的</strong> ht[1]-&gt;table</li>
+<li>将 ht[0]-&gt;table 中的所有键值对迁移到 ht[1]-&gt;table</li>
+<li>将原来 ht[0]-&gt;table 清空，用 ht[1] 替换 ht[0]</li>
+</ol>
+<h3 id="收缩">收缩</h3>
+<p>执行过程</p>
+<ol>
+<li>创建一个比 ht[0]-&gt;table <strong>更小的</strong> ht[1]-&gt;table</li>
+<li>将 ht[0]-&gt;table 中的所有键值对迁移到 ht[1]-&gt;table</li>
+<li>将原来 ht[0]-&gt;table 清空，用 ht[1] 替换 ht[0]</li>
+</ol>
+<hr>
+<h2 id="redis---跳跃表">redis - 跳跃表</h2>
+<h3 id="跳跃表">跳跃表</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 跳跃表
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> zskiplist {
+    <span style="color:#586e75">// 头节点，尾节点
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">struct</span> zskiplistNode <span style="color:#719e07">*</span>header, <span style="color:#719e07">*</span>tail;
+    <span style="color:#586e75">// 节点数量
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">unsigned</span> <span style="color:#dc322f">long</span> length;
+    <span style="color:#586e75">// 目前表内节点的最大层数
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">int</span> level;
+} zskiplist;
+</code></pre></div><h3 id="跳跃表节点">跳跃表节点</h3>
+<div class="highlight"><pre style="color:#93a1a1;background-color:#002b36;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#586e75">/*
+</span><span style="color:#586e75"> * 跳跃表节点
+</span><span style="color:#586e75"> */</span>
+<span style="color:#719e07">typedef</span> <span style="color:#719e07">struct</span> zskiplistNode {
+    <span style="color:#586e75">// member 对象
+</span><span style="color:#586e75"></span>    robj <span style="color:#719e07">*</span>obj;
+    <span style="color:#586e75">// 分值
+</span><span style="color:#586e75"></span>    <span style="color:#dc322f">double</span> score;
+    <span style="color:#586e75">// 后退指针
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">struct</span> zskiplistNode <span style="color:#719e07">*</span>backward;
+    <span style="color:#586e75">// 层
+</span><span style="color:#586e75"></span>    <span style="color:#719e07">struct</span> zskiplistLevel {
+        <span style="color:#586e75">// 前进指针
+</span><span style="color:#586e75"></span>        <span style="color:#719e07">struct</span> zskiplistNode <span style="color:#719e07">*</span>forward;
+        <span style="color:#586e75">// 这个层跨越的节点数量
+</span><span style="color:#586e75"></span>        <span style="color:#dc322f">unsigned</span> <span style="color:#dc322f">int</span> span;
+    } level[];
+} zskiplistNode;
+</code></pre></div>
+		</div>
+
+		<div class="post-tags">
+			
+				
+			
+		</div>
+		<div id="disqus_thread"></div>
+<script type="text/javascript">
+	(function () {
+		
+		
+		if (window.location.hostname == "localhost")
+			return;
+
+		var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+		var disqus_shortname = 'localhost';
+		dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+		(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+	})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by
+		Disqus.</a></noscript>
+<a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+	<div class="footer wrapper">
+	<nav class="nav">
+		<div> © Copyright notice |  <a href="https://github.com/vividvilla/ezhil">Ezhil theme</a> | Built with <a href="https://gohugo.io">Hugo</a></div>
+	</nav>
+</div>
+
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-123-45', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+<script>feather.replace()</script>
+</body>
+</html>
