@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>redis 源码 内部数据结构 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="olOwOlo" /><meta name="description" content="redis - 动态字符串 sdshdr 数据结构 1 2 3 4 5 6 7 8 9 10 11 12 13 struct sdshdr { // buf 已占用长度 int len; // buf 剩余可用长度 int free; // 实际保存字符串数据的地方 // 利用c99(C99" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.79.0 with theme even" />
+
+
+<link rel="canonical" href="http://ywdxz.github.io/post/2020-12-17-1/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link href="/sass/main.min.c7bc1becf36bcf6a9ebd25d2947e43a2eb745ddb0c9a32b43126fd7fa460c351.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="redis 源码 内部数据结构" />
+<meta property="og:description" content="redis - 动态字符串 sdshdr 数据结构 1 2 3 4 5 6 7 8 9 10 11 12 13 struct sdshdr { // buf 已占用长度 int len; // buf 剩余可用长度 int free; // 实际保存字符串数据的地方 // 利用c99(C99" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://ywdxz.github.io/post/2020-12-17-1/" />
+<meta property="article:published_time" content="2020-12-17T14:10:03+08:00" />
+<meta property="article:modified_time" content="2020-12-17T14:10:03+08:00" />
+<meta itemprop="name" content="redis 源码 内部数据结构">
+<meta itemprop="description" content="redis - 动态字符串 sdshdr 数据结构 1 2 3 4 5 6 7 8 9 10 11 12 13 struct sdshdr { // buf 已占用长度 int len; // buf 剩余可用长度 int free; // 实际保存字符串数据的地方 // 利用c99(C99">
+<meta itemprop="datePublished" content="2020-12-17T14:10:03+08:00" />
+<meta itemprop="dateModified" content="2020-12-17T14:10:03+08:00" />
+<meta itemprop="wordCount" content="1506">
+
+
+
+<meta itemprop="keywords" content="" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="redis 源码 内部数据结构"/>
+<meta name="twitter:description" content="redis - 动态字符串 sdshdr 数据结构 1 2 3 4 5 6 7 8 9 10 11 12 13 struct sdshdr { // buf 已占用长度 int len; // buf 剩余可用长度 int free; // 实际保存字符串数据的地方 // 利用c99(C99"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">redis 源码 内部数据结构</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-12-17 </span>
+        
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">Contents</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#redis---动态字符串">redis - 动态字符串</a>
+          <ul>
+            <li><a href="#sdshdr-数据结构">sdshdr 数据结构</a></li>
+            <li><a href="#buf-进行扩展策略">buf 进行扩展策略</a></li>
+          </ul>
+        </li>
+        <li><a href="#redis---双端列表">redis - 双端列表</a>
+          <ul>
+            <li><a href="#双端链表的实现">双端链表的实现</a></li>
+          </ul>
+        </li>
+        <li><a href="#redis---字典">redis - 字典</a>
+          <ul>
+            <li><a href="#字典">字典</a></li>
+            <li><a href="#处理函数">处理函数</a></li>
+            <li><a href="#哈希表">哈希表</a></li>
+            <li><a href="#哈希表节点">哈希表节点</a></li>
+            <li><a href="#迭代器">迭代器</a></li>
+            <li><a href="#哈希算法">哈希算法</a></li>
+            <li><a href="#rehash">ReHash</a></li>
+            <li><a href="#收缩">收缩</a></li>
+          </ul>
+        </li>
+        <li><a href="#redis---跳跃表">redis - 跳跃表</a>
+          <ul>
+            <li><a href="#跳跃表">跳跃表</a></li>
+            <li><a href="#跳跃表节点">跳跃表节点</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="redis---动态字符串">redis - 动态字符串</h2>
+<h3 id="sdshdr-数据结构">sdshdr 数据结构</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="k">struct</span> <span class="n">sdshdr</span> <span class="p">{</span>
+
+    <span class="c1">// buf 已占用长度
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">len</span><span class="p">;</span>
+
+    <span class="c1">// buf 剩余可用长度
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">free</span><span class="p">;</span>
+
+    <span class="c1">// 实际保存字符串数据的地方
+</span><span class="c1"></span>    <span class="c1">// 利用c99(C99 specification 6.7.2.1.16)中引入的 flexible array member,通过buf来引用sdshdr后面的地址，
+</span><span class="c1"></span>    <span class="c1">// 详情google &#34;flexible array member&#34;
+</span><span class="c1"></span>    <span class="kt">char</span> <span class="n">buf</span><span class="p">[];</span>
+<span class="p">};</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="buf-进行扩展策略">buf 进行扩展策略</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="n">sds</span> <span class="nf">sdsMakeRoomFor</span><span class="p">(</span>
+    <span class="n">sds</span> <span class="n">s</span><span class="p">,</span>
+    <span class="n">size_t</span> <span class="n">addlen</span>   <span class="c1">// 需要增加的空间长度
+</span><span class="c1"></span><span class="p">)</span> 
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">sdshdr</span> <span class="o">*</span><span class="n">sh</span><span class="p">,</span> <span class="o">*</span><span class="n">newsh</span><span class="p">;</span>
+    <span class="n">size_t</span> <span class="n">free</span> <span class="o">=</span> <span class="n">sdsavail</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+    <span class="n">size_t</span> <span class="n">len</span><span class="p">,</span> <span class="n">newlen</span><span class="p">;</span>
+
+    <span class="c1">// 剩余空间可以满足需求，无须扩展
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="n">free</span> <span class="o">&gt;=</span> <span class="n">addlen</span><span class="p">)</span> <span class="k">return</span> <span class="n">s</span><span class="p">;</span>
+
+    <span class="n">sh</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span> <span class="p">(</span><span class="n">s</span><span class="o">-</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">sdshdr</span><span class="p">)));</span>
+
+    <span class="c1">// 目前 buf 长度
+</span><span class="c1"></span>    <span class="n">len</span> <span class="o">=</span> <span class="n">sdslen</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+    <span class="c1">// 新 buf 长度
+</span><span class="c1"></span>    <span class="n">newlen</span> <span class="o">=</span> <span class="p">(</span><span class="n">len</span><span class="o">+</span><span class="n">addlen</span><span class="p">);</span>
+    <span class="c1">// 如果新 buf 长度小于 SDS_MAX_PREALLOC 长度
+</span><span class="c1"></span>    <span class="c1">// 那么将 buf 的长度设为新 buf 长度的两倍
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="n">newlen</span> <span class="o">&lt;</span> <span class="n">SDS_MAX_PREALLOC</span><span class="p">)</span>
+        <span class="n">newlen</span> <span class="o">*=</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="k">else</span>
+        <span class="n">newlen</span> <span class="o">+=</span> <span class="n">SDS_MAX_PREALLOC</span><span class="p">;</span>
+
+    <span class="c1">// 扩展长度
+</span><span class="c1"></span>    <span class="n">newsh</span> <span class="o">=</span> <span class="n">zrealloc</span><span class="p">(</span><span class="n">sh</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">sdshdr</span><span class="p">)</span><span class="o">+</span><span class="n">newlen</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">newsh</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="n">newsh</span><span class="o">-&gt;</span><span class="n">free</span> <span class="o">=</span> <span class="n">newlen</span> <span class="o">-</span> <span class="n">len</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="n">newsh</span><span class="o">-&gt;</span><span class="n">buf</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="redis---双端列表">redis - 双端列表</h2>
+<p><em>Node：Redis 列表使用两种数据结构作为底层实现：</em></p>
+<ol>
+<li>双端队列</li>
+<li>压缩队列</li>
+</ol>
+<h3 id="双端链表的实现">双端链表的实现</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/*
+</span><span class="cm"> * 链表节点
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">listNode</span> <span class="p">{</span>
+
+    <span class="c1">// 前驱节点
+</span><span class="c1"></span>    <span class="k">struct</span> <span class="n">listNode</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+
+    <span class="c1">// 后继节点
+</span><span class="c1"></span>    <span class="k">struct</span> <span class="n">listNode</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+
+    <span class="c1">// 值
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="o">*</span><span class="n">value</span><span class="p">;</span>
+
+<span class="p">}</span> <span class="n">listNode</span><span class="p">;</span>
+
+<span class="cm">/*
+</span><span class="cm"> * 链表迭代器
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">listIter</span> <span class="p">{</span>
+
+    <span class="c1">// 下一节点
+</span><span class="c1"></span>    <span class="n">listNode</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+
+    <span class="c1">// 迭代方向
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">direction</span><span class="p">;</span>
+
+<span class="p">}</span> <span class="n">listIter</span><span class="p">;</span>
+
+<span class="cm">/*
+</span><span class="cm"> * 链表
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">list</span> <span class="p">{</span>
+
+    <span class="c1">// 表头指针
+</span><span class="c1"></span>    <span class="n">listNode</span> <span class="o">*</span><span class="n">head</span><span class="p">;</span>
+
+    <span class="c1">// 表尾指针
+</span><span class="c1"></span>    <span class="n">listNode</span> <span class="o">*</span><span class="n">tail</span><span class="p">;</span>
+
+    <span class="c1">// 节点数量
+</span><span class="c1"></span>    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">len</span><span class="p">;</span>
+
+    <span class="c1">// 复制函数
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">dup</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
+    <span class="c1">// 释放函数
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">free</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
+    <span class="c1">// 比对函数
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">match</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">key</span><span class="p">);</span>
+<span class="p">}</span> <span class="n">list</span><span class="p">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><hr>
+<h2 id="redis---字典">redis - 字典</h2>
+<p>Redis 的 Hash 类型键使用以下两种数据结构作为底层实现:</p>
+<ol>
+<li>字典</li>
+<li>压缩列表</li>
+</ol>
+<h3 id="字典">字典</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/*
+</span><span class="cm"> * 字典
+</span><span class="cm"> *
+</span><span class="cm"> * 每个字典使用两个哈希表，用于实现渐进式 rehash
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">dict</span> <span class="p">{</span>
+
+    <span class="c1">// 特定于类型的处理函数
+</span><span class="c1"></span>    <span class="n">dictType</span> <span class="o">*</span><span class="n">type</span><span class="p">;</span>
+
+    <span class="c1">// 类型处理函数的私有数据
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="o">*</span><span class="n">privdata</span><span class="p">;</span>
+
+    <span class="c1">// 哈希表（2个）
+</span><span class="c1"></span>    <span class="n">dictht</span> <span class="n">ht</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>       
+
+    <span class="c1">// 记录 rehash 进度的标志，值为-1 表示 rehash 未进行
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">rehashidx</span><span class="p">;</span>
+
+    <span class="c1">// 当前正在运作的安全迭代器数量
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">iterators</span><span class="p">;</span>      
+
+<span class="p">}</span> <span class="n">dict</span><span class="p">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="处理函数">处理函数</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/*
+</span><span class="cm"> * 特定于类型的一簇处理函数
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">dictType</span> <span class="p">{</span>
+    <span class="c1">// 计算键的哈希值函数, 计算key在hash table中的存储位置，不同的dict可以有不同的hash function.
+</span><span class="c1"></span>    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">hashFunction</span><span class="p">)(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">key</span><span class="p">);</span>
+    <span class="c1">// 复制键的函数
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">keyDup</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">privdata</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">key</span><span class="p">);</span>
+    <span class="c1">// 复制值的函数
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">valDup</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">privdata</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">obj</span><span class="p">);</span>
+    <span class="c1">// 对比两个键的函数
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">keyCompare</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">privdata</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">key1</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">key2</span><span class="p">);</span>
+    <span class="c1">// 键的释构函数
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">keyDestructor</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">privdata</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">key</span><span class="p">);</span>
+    <span class="c1">// 值的释构函数
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">valDestructor</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">privdata</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">obj</span><span class="p">);</span>
+<span class="p">}</span> <span class="n">dictType</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="哈希表">哈希表</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/*
+</span><span class="cm"> * 哈希表
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">dictht</span> <span class="p">{</span>
+
+    <span class="c1">// 哈希表节点指针数组（俗称桶，bucket）
+</span><span class="c1"></span>    <span class="n">dictEntry</span> <span class="o">**</span><span class="n">table</span><span class="p">;</span>      
+
+    <span class="c1">// 指针数组的大小
+</span><span class="c1"></span>    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">size</span><span class="p">;</span>     
+
+    <span class="c1">// 指针数组的长度掩码，用于计算索引值
+</span><span class="c1"></span>    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">sizemask</span><span class="p">;</span> 
+
+    <span class="c1">// 哈希表现有的节点数量
+</span><span class="c1"></span>    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">used</span><span class="p">;</span>     
+
+<span class="p">}</span> <span class="n">dictht</span><span class="p">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="哈希表节点">哈希表节点</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/*
+</span><span class="cm"> * 哈希表节点
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">dictEntry</span> <span class="p">{</span>
+    <span class="c1">// 键
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="o">*</span><span class="n">key</span><span class="p">;</span>
+
+    <span class="c1">// 值
+</span><span class="c1"></span>    <span class="k">union</span> <span class="p">{</span>
+        <span class="kt">void</span> <span class="o">*</span><span class="n">val</span><span class="p">;</span>
+        <span class="n">uint64_t</span> <span class="n">u64</span><span class="p">;</span>
+        <span class="n">int64_t</span> <span class="n">s64</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">v</span><span class="p">;</span>
+
+    <span class="c1">// 链往后继节点
+</span><span class="c1"></span>    <span class="k">struct</span> <span class="n">dictEntry</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span> 
+
+<span class="p">}</span> <span class="n">dictEntry</span><span class="p">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="迭代器">迭代器</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/*
+</span><span class="cm"> * 字典迭代器
+</span><span class="cm"> *
+</span><span class="cm"> * 如果 safe 属性的值为 1 ，那么表示这个迭代器是一个安全迭代器。
+</span><span class="cm"> * 当安全迭代器正在迭代一个字典时，该字典仍然可以调用 dictAdd 、 dictFind 和其他函数。
+</span><span class="cm"> *
+</span><span class="cm"> * 如果 safe 属性的值为 0 ，那么表示这不是一个安全迭代器。
+</span><span class="cm"> * 如果正在运作的迭代器是不安全迭代器，那么它只可以对字典调用 dictNext 函数。
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">dictIterator</span> <span class="p">{</span>
+
+    <span class="c1">// 正在迭代的字典
+</span><span class="c1"></span>    <span class="n">dict</span> <span class="o">*</span><span class="n">d</span><span class="p">;</span>                
+
+    <span class="kt">int</span> <span class="n">table</span><span class="p">,</span>              <span class="c1">// 正在迭代的哈希表的号码（0 或者 1）
+</span><span class="c1"></span>        <span class="n">index</span><span class="p">,</span>              <span class="c1">// 正在迭代的哈希表数组的索引
+</span><span class="c1"></span>        <span class="n">safe</span><span class="p">;</span>               <span class="c1">// 是否安全？
+</span><span class="c1"></span>
+    <span class="n">dictEntry</span> <span class="o">*</span><span class="n">entry</span><span class="p">,</span>       <span class="c1">// 当前哈希节点
+</span><span class="c1"></span>              <span class="o">*</span><span class="n">nextEntry</span><span class="p">;</span>   <span class="c1">// 当前哈希节点的后继节点
+</span><span class="c1"></span><span class="p">}</span> <span class="n">dictIterator</span><span class="p">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="哈希算法">哈希算法</h3>
+<ol>
+<li>MurmurHash2 32 bit 算法</li>
+<li>djb 算 法</li>
+</ol>
+<h3 id="rehash">ReHash</h3>
+<p>执行过程</p>
+<ol>
+<li>创建一个比 ht[0]-&gt;table <strong>更大的</strong> ht[1]-&gt;table</li>
+<li>将 ht[0]-&gt;table 中的所有键值对迁移到 ht[1]-&gt;table</li>
+<li>将原来 ht[0]-&gt;table 清空，用 ht[1] 替换 ht[0]</li>
+</ol>
+<h3 id="收缩">收缩</h3>
+<p>执行过程</p>
+<ol>
+<li>创建一个比 ht[0]-&gt;table <strong>更小的</strong> ht[1]-&gt;table</li>
+<li>将 ht[0]-&gt;table 中的所有键值对迁移到 ht[1]-&gt;table</li>
+<li>将原来 ht[0]-&gt;table 清空，用 ht[1] 替换 ht[0]</li>
+</ol>
+<hr>
+<h2 id="redis---跳跃表">redis - 跳跃表</h2>
+<h3 id="跳跃表">跳跃表</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/*
+</span><span class="cm"> * 跳跃表
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">zskiplist</span> <span class="p">{</span>
+    <span class="c1">// 头节点，尾节点
+</span><span class="c1"></span>    <span class="k">struct</span> <span class="n">zskiplistNode</span> <span class="o">*</span><span class="n">header</span><span class="p">,</span> <span class="o">*</span><span class="n">tail</span><span class="p">;</span>
+    <span class="c1">// 节点数量
+</span><span class="c1"></span>    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">length</span><span class="p">;</span>
+    <span class="c1">// 目前表内节点的最大层数
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">level</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">zskiplist</span><span class="p">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="跳跃表节点">跳跃表节点</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/*
+</span><span class="cm"> * 跳跃表节点
+</span><span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">zskiplistNode</span> <span class="p">{</span>
+    <span class="c1">// member 对象
+</span><span class="c1"></span>    <span class="n">robj</span> <span class="o">*</span><span class="n">obj</span><span class="p">;</span>
+    <span class="c1">// 分值
+</span><span class="c1"></span>    <span class="kt">double</span> <span class="n">score</span><span class="p">;</span>
+    <span class="c1">// 后退指针
+</span><span class="c1"></span>    <span class="k">struct</span> <span class="n">zskiplistNode</span> <span class="o">*</span><span class="n">backward</span><span class="p">;</span>
+    <span class="c1">// 层
+</span><span class="c1"></span>    <span class="k">struct</span> <span class="n">zskiplistLevel</span> <span class="p">{</span>
+        <span class="c1">// 前进指针
+</span><span class="c1"></span>        <span class="k">struct</span> <span class="n">zskiplistNode</span> <span class="o">*</span><span class="n">forward</span><span class="p">;</span>
+        <span class="c1">// 这个层跨越的节点数量
+</span><span class="c1"></span>        <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">span</span><span class="p">;</span>
+    <span class="p">}</span> <span class="n">level</span><span class="p">[];</span>
+<span class="p">}</span> <span class="n">zskiplistNode</span><span class="p">;</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">Author</span>
+    <span class="item-content">olOwOlo</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">LastMod</span>
+    <span class="item-content">
+        2020-12-17
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/2020-12-11-3/">
+            <span class="next-text nav-default">关于math.NaN() 问题记录</span>
+            <span class="next-text nav-mobile">Next</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://ywdxz.github.io/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    Powered by <a class="hexo-link" href="https://gohugo.io">Hugo</a>
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    Theme - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020<span class="heart"><i class="iconfont icon-heart"></i></span><span>olOwOlo</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+
+
+
+<script type="text/javascript" src="/js/main.min.c12618f9a600c40bd024996677e951e64d3487006775aeb22e200c990006c5c7.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>
