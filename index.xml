@@ -40,7 +40,7 @@
       <pubDate>Mon, 30 Nov 2020 23:18:10 +0800</pubDate>
       
       <guid>http://ywdxz.github.io/post/2020-12-11-2/</guid>
-      <description>浮点数整理 标准 根据国际标准IEEE 754，任意一个二进制浮点数可以表示成下面科学计数的形式： 1 value = (-1)^sign * fraction * 2^exponent 内存布局 1 2 3 ----------------------- | sign|exponent|fraction| ----------------------- sign 符号位，</description>
+      <description>标准 根据国际标准IEEE 754，任意一个二进制浮点数可以表示成下面科学计数的形式： 1 value = (-1)^sign * fraction * 2^exponent 内存布局 1 2 3 ----------------------- | sign|exponent|fraction| ----------------------- sign 符号位，1 byte</description>
     </item>
     
   </channel>
