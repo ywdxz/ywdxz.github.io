@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>linux基础知识 on Even - A super concise theme for Hugo</title>
+    <link>http://ywdxz.github.io/categories/linux%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/</link>
+    <description>Recent content in linux基础知识 on Even - A super concise theme for Hugo</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Fri, 11 Dec 2020 11:38:25 +0800</lastBuildDate><atom:link href="http://ywdxz.github.io/categories/linux%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>环境变量整理</title>
+      <link>http://ywdxz.github.io/post/2020-12-11-1/</link>
+      <pubDate>Fri, 11 Dec 2020 11:38:25 +0800</pubDate>
+      
+      <guid>http://ywdxz.github.io/post/2020-12-11-1/</guid>
+      <description>经常会用到需要手工设置linux环境变量的情况，每次都是google一下，这边把结果整理一下作为知识储备。 临时设置 直接执行 export GOBACTRA</description>
+    </item>
+    
+  </channel>
+</rss>
